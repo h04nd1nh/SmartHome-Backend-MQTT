@@ -8,34 +8,37 @@ const action_history = db.action_history;
 
 exports.action = async (req, res) => {
     const { device } = req.body;
+    if (!device) {
+        res.status(401).json({ message: "lost device" });
+    } else {
+        try {
+            // Tìm bản ghi mới nhất của device trong bảng action_history
+            const latestData = await action_history.findOne({
+                where: { device },
+                order: [['createdat', 'DESC']]
+            });
     
-    try {
-        // Tìm bản ghi mới nhất của device trong bảng action_history
-        const latestData = await action_history.findOne({
-            where: { device },
-            order: [['createdat', 'DESC']]
-        });
-
-        if (!latestData) {
-            return res.status(404).json({ error: "Device not found" });
+            if (!latestData) {
+                return res.status(404).json({ error: "Device not found" });
+            }
+    
+            // Lấy hành động (action) của bản ghi mới nhất
+            const currentAction = latestData.action;
+    
+            // Xác định hành động mới
+            const newAction = currentAction === 'on' ? 'off' : 'on';
+    
+            // Cập nhật hành động mới vào bảng action_history
+            await action_history.create({
+                action: newAction,
+                device,
+            });
+    
+            res.status(200).json({ device, action: newAction });
+        } catch (error) {
+            console.error("Error performing action:", error);
+            res.status(500).json({ error: "Error performing action" });
         }
-
-        // Lấy hành động (action) của bản ghi mới nhất
-        const currentAction = latestData.action;
-
-        // Xác định hành động mới
-        const newAction = currentAction === 'on' ? 'off' : 'on';
-
-        // Cập nhật hành động mới vào bảng action_history
-        await action_history.update(
-            { action: newAction },
-            { where: { device, id: latestData.id } }
-        );
-
-        res.status(200).json({ device, action: newAction });
-    } catch (error) {
-        console.error("Error performing action:", error);
-        res.status(500).json({ error: "Error performing action" });
     }
 };
 
@@ -67,17 +70,9 @@ exports.action_history = async (req, res) => {
 exports.action_history_all = async (req, res) => {
     try {
         // Lấy thời điểm bắt đầu và kết thúc của ngày hiện tại
-        const todayStart = startOfDay(new Date());
-        const todayEnd = endOfDay(new Date());
-
+        
         // Tìm tất cả các bản ghi trong khoảng thời gian của ngày hiện tại
-        const allDeviceActions = await action_history.findAll({
-            where: {
-                createdat: {
-                    [Op.between]: [todayStart, todayEnd]
-                }
-            }
-        });
+        const allDeviceActions = await action_history.findAll();
 
         res.json(allDeviceActions);
     } catch (error) {
@@ -88,7 +83,9 @@ exports.action_history_all = async (req, res) => {
 
 exports.state = async (req, res) => {
     const { device } = req.body;
-
+    if (!device) {
+        return res.status(401).json({ error: "Lost device" });
+    }
     try {
         // Tìm bản ghi mới nhất của device trong bảng Action_history
         const latestAction = await action_history.findOne({

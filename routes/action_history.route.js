@@ -10,11 +10,11 @@ module.exports = function (app) {
   });
 
 
-  app.post("/api/v1/data", controller.action);
+  app.post("/api/v1/action", controller.action);
 
-  app.post("/api/v1/state", controller.state);
+  app.get("/api/v1/state", controller.state);
 
   app.post("/api/v1/history", controller.action_history);
 
-  app.get("/api/v1/history_all", controller.action_history_all);
+  app.get("/api/v1/action_history_all", controller.action_history_all);
 };
